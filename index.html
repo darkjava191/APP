@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>APP — Калькулятор заявки (FINAL)</title>
+<style>
+  :root{
+    --accent:#d98b5f;
+    --accent2:#2ea0ff;
+    --bg:#071014;
+    --card:#0d1416;
+    --muted:#98aab0;
+    --ok:#9fe2a6;
+  }
+  *{box-sizing:border-box}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#041018 0%, #071318 60%);color:#eaf6fb;margin:0;padding:18px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:linear-gradient(180deg,var(--card),#071012);box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  .logo{width:64px;height:64px;border-radius:10px;background:linear-gradient(180deg,var(--accent),#b86d3f);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:20px}
+  h1{margin:0;font-size:18px}
+  .subtitle{color:var(--muted);font-size:13px}
+  .card{margin-top:14px;padding:14px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 6px 20px rgba(0,0,0,0.55)}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type="number"], input[type="text"], textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff;font-size:14px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  .row{display:flex;gap:12px;align-items:center;margin-top:12px}
+  button{background:var(--accent);border:none;padding:10px 14px;border-radius:10px;color:#fff;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:13px;text-align:center}
+  th{font-weight:700;color:var(--muted);font-size:12px}
+  .totals{margin-top:12px;text-align:right;font-weight:700;color:#fff}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .small{font-size:12px;color:var(--muted)}
+  .right{margin-left:auto}
+  .token-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .token-row input{flex:1;min-width:220px}
+  .ok{color:var(--ok);font-weight:700}
+  @media(max-width:900px){.grid-4,.grid-3{grid-template-columns:repeat(1,1fr)} .right{margin-left:0}}
+  @media print { body{background:#fff;color:#000} header,.token-row,.actions,.note{display:none} .card{box-shadow:none;background:transparent;padding:0} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">APP</div>
+      <div>
+        <h1>Калькулятор заявки по медным трубам — Angren Pipe Plant</h1>
+        <div class="subtitle">Заполни параметры и отправь заявку в мессенджеры</div>
+      </div>
+      <div style="margin-left:auto;color:var(--muted)"> <strong id="chat-id-display"></strong></div>
+    </header>
+
+    <div class="card" role="main">
+      <h2 class="small">Параметры трубы</h2>
+
+      <div class="grid-4" style="margin-top:8px">
+        <div>
+          <label>Наружный диаметр, D (мм)</label>
+          <input id="input-do" type="number" min="0" step="0.01" value="20">
+        </div>
+        <div>
+          <label>Толщина стенки, t (мм)</label>
+          <input id="input-t" type="number" min="0" step="0.01" value="0.5">
+        </div>
+        <div>
+          <label>Длина, L (м)</label>
+          <input id="input-l" type="number" min="0" step="0.01" value="1">
+        </div>
+        <div>
+          <label>Количество, шт</label>
+          <input id="input-q" type="number" min="1" step="1" value="1">
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div>
+          <label>Плотность (кг/м³)</label>
+          <input id="input-density" type="number" min="0" step="1" value="8960">
+          <div class="note">По умолчанию — медь ~8960</div>
+        </div>
+        <div>
+          <label>Вес, кг/м (расчёт)</label>
+          <input id="out-kgm" type="text" readonly>
+        </div>
+        <div>
+          <label>Вес 1 трубы (кг)</label>
+          <input id="out-kg-piece" type="text" readonly>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btn-add">Добавить в таблицу</button>
+        <button id="btn-calc" class="ghost">Пересчитать</button>
+        <div class="note">Формула: m(кг/м) = ρ · π/4 · (Do² − Di²) · 1e−6, Di = Do − 2·t</div>
+      </div>
+
+      <h3 class="small" style="margin-top:14px">Список позиций</h3>
+      <div style="overflow:auto">
+        <table id="result-table" role="table" aria-label="Таблица расчётов">
+          <thead>
+            <tr><th>#</th><th>D</th><th>t</th><th>L</th><th>qty</th><th>ρ</th><th>кг/м</th><th>вес/шт</th><th>итого</th><th>действия</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="totals" id="totals">Общий вес: 0 кг</div>
+
+      <div class="actions" style="margin-top:10px">
+        <button id="btn-download" class="ghost">Скачать CSV</button>
+        <button id="btn-clear" class="ghost">Очистить</button>
+        <button id="btn-copy" class="ghost">Копировать текст заявки</button>
+      </div>
+
+      <div class="card" style="margin-top:14px;padding:12px">
+        <h3 class="small">Контакты для заявки</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <label>Ваше имя</label>
+            <input id="cust-name" type="text" placeholder="Иван Иванов">
+          </div>
+          <div style="flex:1;min-width:180px">
+            <label>Телефон</label>
+            <input id="cust-phone" type="text" placeholder="+7 99 000 00 00">
+          </div>
+          <div style="flex-basis:100%;margin-top:8px">
+            <label>Комментарий</label>
+            <textarea id="cust-comment" rows="3" placeholder="Дополнительно..."></textarea>
+          </div>
+        </div>
+
+        <div class="token-row">
+          <label style="min-width:110px" ></label>
+          <button id="save-token" class="ghost" style="display:none;">Save token</button>
+          <button id="clear-token" class="ghost" style="display:none;">Clear token</button>
+          <div id="token-status" class="small right" style="display:none;"></div>
+        </div>
+
+        <div class="actions" style="margin-top:12px">
+          <button id="send-telegram">Отправить</button>
+          <button id="send-whatsapp" class="ghost" style="display:none;">WhatsApp</button>
+          <button id="send-mail" class="ghost" style="display:none;">Email</button>
+          <button id="send-wechat" class="ghost" style="display:none;">WeChat — Copy</button>
+          <button id="export-pdf" class="ghost" style="display:none;">Export PDF</button>
+        </div>
+
+        <div class="note" style="margin-top:8px">
+          <strong></strong>
+        </div>
+      </div>
+    </div>
+
+    <footer style="margin-top:12px;color:var(--muted);font-size:13px">
+      Сделано для Angren Pipe Plant — автоматическая отправка заявок.
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const CHAT_ID = -1003107097637;
+
+  const $ = id => document.getElementById(id);
+  const inputDo = $('input-do'), inputT = $('input-t'), inputL = $('input-l'), inputQ = $('input-q');
+  const inputDensity = $('input-density'), outKgm = $('out-kgm'), outPiece = $('out-kg-piece');
+  const btnCalc = $('btn-calc'), btnAdd = $('btn-add'), tbody = document.querySelector('#result-table tbody');
+  const totals = $('totals'), btnDownload = $('btn-download'), btnClear = $('btn-clear'), btnCopy = $('btn-copy');
+  const sendTelegram = $('send-telegram'), sendWhatsapp = $('send-whatsapp'), sendMail = $('send-mail'), sendWeChat = $('send-wechat');
+  const exportPdf = $('export-pdf');
+  const custName = $('cust-name'), custPhone = $('cust-phone'), custComment = $('cust-comment'), copyStatus = $('copy-status');
+  const botTokenInput = $('bot-token'), saveTokenBtn = $('save-token'), clearTokenBtn = $('clear-token'), tokenStatus = $('token-status');
+
+  let rows = [];
+
+  function calcValues(D,t,L,q,density){
+    D=Number(D); t=Number(t); L=Number(L); q=Number(q); density=Number(density);
+    if(!(D>0 && t>=0 && L>=0 && q>0 && density>0)) return null;
+    const Di = D - 2*t;
+    if(Di <= 0) return null;
+    const kgm = density * Math.PI/4 * (D*D - Di*Di) * 1e-6;
+    const weightPerPiece = kgm * L;
+    const total = weightPerPiece * q;
+    return {kgm, weightPerPiece, total, Di};
+  }
+
+  function renderCalc(){
+    const v = calcValues(inputDo.value, inputT.value, inputL.value, inputQ.value, inputDensity.value);
+    if(!v){ outKgm.value=''; outPiece.value=''; return; }
+    outKgm.value = v.kgm.toFixed(4);
+    outPiece.value = v.weightPerPiece.toFixed(4);
+    return v;
+  }
+
+  function renderTable(){
+    tbody.innerHTML = '';
+    let grand = 0;
+    rows.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${r.D}</td><td>${r.t}</td><td>${r.L}</td><td>${r.q}</td><td>${r.density}</td>
+        <td>${r.kgm.toFixed(4)}</td><td>${r.weightPerPiece.toFixed(4)}</td><td>${r.total.toFixed(4)}</td>
+        <td><button data-i="${i}" class="del">Удалить</button></td>`;
+      tbody.appendChild(tr);
+      grand += r.total;
+    });
+    totals.textContent = `Общий вес: ${grand.toFixed(4)} кг`;
+    attachDelete();
+  }
+
+  function attachDelete(){
+    document.querySelectorAll('.del').forEach(btn=>{
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i);
+        rows.splice(i,1);
+        renderTable();
+      };
+    });
+  }
+
+  btnCalc.onclick = renderCalc;
+  btnAdd.onclick = () => {
+    const D = Number(inputDo.value), t = Number(inputT.value), L = Number(inputL.value), q = Number(inputQ.value), density = Number(inputDensity.value);
+    const v = calcValues(D,t,L,q,density);
+    if(!v){ alert('Проверьте входные данные'); return; }
+    rows.push({D,t,L,q,density,kgm:v.kgm,weightPerPiece:v.weightPerPiece,total:v.total});
+    renderTable();
+  };
+
+  btnDownload.onclick = () => {
+    if(rows.length===0){ alert('Таблица пуста'); return; }
+    const header = ['#','D(mm)','t(mm)','L(m)','qty','density(kg/m3)','kg/m','weight_per_piece(kg)','total(kg)'];
+    const lines = [header.join(',')];
+    rows.forEach((r,i)=>lines.push([i+1,r.D,r.t,r.L,r.q,r.density,r.kgm.toFixed(6),r.weightPerPiece.toFixed(6),r.total.toFixed(6)].join(',')));
+    const blob = new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='request_table.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  btnClear.onclick = () => { if(!confirm('Очистить таблицу?')) return; rows=[]; renderTable(); };
+
+  function buildTextMessage(){
+    let txt = `Заявка от: ${custName.value || '[Имя]'}\nТелефон: ${custPhone.value || '[Телефон]'}\n\nПозиции:\n`;
+    if(rows.length===0) txt += '(Пустая таблица)\n';
+    else {
+      rows.forEach((r,i)=>{ txt += `${i+1}. D=${r.D}мм, t=${r.t}мм, L=${r.L}м, qty=${r.q}, kg/m=${r.kgm.toFixed(4)}, вес/шт=${r.weightPerPiece.toFixed(3)}кг, итого=${r.total.toFixed(3)}кг\n`; });
+      const total = rows.reduce((s,r)=>s+r.total,0);
+      txt += `\nИтого масса: ${total.toFixed(3)} кг\n`;
+    }
+    if(custComment.value) txt += `\nКомментарий: ${custComment.value}\n`;
+    txt += `\nОтправлено с калькулятора Angren Pipe Plant.`;
+    return txt;
+  }
+
+  btnCopy.onclick = async () => {
+    const txt = buildTextMessage();
+    try{ await navigator.clipboard.writeText(txt); copyStatus.textContent='Текст скопирован'; setTimeout(()=>{copyStatus.textContent='';},3000); }
+    catch(e){ alert('Не удалось скопировать автоматически. Скопируй вручную:\n\n' + txt); }
+  };
+
+  sendWhatsapp.onclick = () => {
+    const text = encodeURIComponent(buildTextMessage());
+    window.open(`https://wa.me/?text=${text}`,'_blank');
+  };
+
+  sendMail.onclick = () => {
+    const subject = encodeURIComponent('Заявка на трубы — Angren Pipe Plant');
+    const body = encodeURIComponent(buildTextMessage());
+    window.open(`mailto:?subject=${subject}&body=${body}`,'_blank');
+  };
+
+  sendWeChat.onclick = async () => {
+    const txt = buildTextMessage();
+    try{ await navigator.clipboard.writeText(txt); alert('Текст скопирован в буфер обмена. Открой WeChat и вставь.'); }
+    catch(e){ alert('Скопируй вручную:\n\n' + txt); }
+  };
+
+  exportPdf.onclick = () => {
+    const txt = buildTextMessage();
+    let html = `<html><head><meta charset="utf-8"><title>Заявка</title></head><body><pre style="font-size:14px">${escapeHtml(txt)}</pre></body></html>`;
+    const w = window.open('','_blank'); w.document.write(html); w.document.close();
+    setTimeout(()=>{ w.print(); }, 500);
+  };
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // Token helpers
+  function getSavedToken(){ return localStorage.getItem('app_bot_token') || ''; }
+  function saveToken(val){ localStorage.setItem('app_bot_token', val || ''); }
+  function clearToken(){ localStorage.removeItem('app_bot_token'); }
+  function renderTokenStatus(){
+    const t = getSavedToken();
+    if(t){ tokenStatus.textContent = 'Token saved (local)'; tokenStatus.className='ok'; botTokenInput.value = t; }
+    else { tokenStatus.textContent = 'Token not saved'; tokenStatus.className='small'; botTokenInput.value = ''; }
+  }
+  saveTokenBtn.onclick = () => {
+    const v = botTokenInput.value.trim();
+    if(!v){ alert('Вставь токен в поле'); return; }
+    saveToken(v);
+    renderTokenStatus();
+    alert('Token saved locally. Теперь нажми Send to Telegram.');
+  };
+  clearTokenBtn.onclick = () => { clearToken(); renderTokenStatus(); };
+
+  // Telegram send (primary: fetch POST, fallback: Image GET)
+  async function sendToTelegramFetch(text){
+    const token = getSavedToken();
+    if(!token) throw new Error('token_missing');
+    const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
+    const body = { chat_id: CHAT_ID, text };
+    // try POST
+    const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), mode:'cors' });
+    if(!res.ok) {
+      const txt = await (res.text().catch(()=>Promise.resolve('')));
+      throw new Error('post_failed: ' + res.status + ' ' + txt);
+    }
+    return true;
+  }
+
+  function sendToTelegramImage(text){
+    const token = getSavedToken();
+    if(!token) throw new Error('token_missing');
+    const encoded = encodeURIComponent(text);
+    const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${CHAT_ID}&text=${encoded}`;
+    const img = new Image();
+    img.src = url + '&_=' + Date.now();
+    // silent; cannot read response due to CORS, but request likely delivered
+    setTimeout(()=>{}, 1200);
+  }
+
+  sendTelegram.onclick = async () => {
+    const txt = buildTextMessage();
+    const token = getSavedToken();
+    if(!token){ if(confirm('Токен не сохранён. Вставить и сохранить сейчас?')){ botTokenInput.focus(); } return; }
+    try{
+      // primary attempt: fetch POST
+      await sendToTelegramFetch(txt);
+      alert('Заявка отправлена.');
+    } catch(err){
+      console.warn('Fetch send failed:', err);
+      // fallback: image trick
+      try{ sendToTelegramImage(txt); alert('Попытка отправки через fetch не удалась, выполнена отправка через резервный метод (Image). Проверь группу.'); }
+      catch(e2){ alert('Не удалось отправить заявку в Telegram. Проверь токен/права бота.'); }
+    }
+  };
+
+  // init
+  (function init(){
+
+    // если токена нет — сохранить автоматически
+    if(!localStorage.getItem('app_bot_token')){
+      localStorage.setItem('app_bot_token',"8373126625:AAFYZbupt4ACRbkiWo_121EwXSqnKBLwAJk");
+    }
+
+    renderTokenStatus();
+
+    [inputDo,inputT,inputL,inputQ,inputDensity].forEach(i=>i.addEventListener('input', renderCalc));
+    renderCalc();
+  })();
+
+  // prevent Enter submit
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA'){ e.preventDefault(); }
+  });
+})();
+</script>
+</body>
+</html>
